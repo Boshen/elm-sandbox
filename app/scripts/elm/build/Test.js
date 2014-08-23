@@ -28,9 +28,7 @@ Elm.Test.make = function (_elm) {
    var Text = Elm.Text.make(_elm);
    var Time = Elm.Time.make(_elm);
    var _op = {};
-   var main = A2(Signal.lift,
-   Text.asText,
-   Mouse.position);
+   var main = Text.asText("Hello, World!!!!");
    _elm.Test.values = {_op: _op
                       ,main: main};
    return _elm.Test.values;
