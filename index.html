@@ -1,0 +1,18 @@
+<html>
+
+  <head>
+    <title>Embedding Elm in HTML!</title>
+    <script type="text/javascript" src="http://elm-lang.org/elm-runtime.js"></script>
+    <script type="text/javascript" src="build/Test.js"></script>
+  </head>
+
+  <body>
+    <div id="test" style="width:50%; height:400px;"></div>
+  </body>
+
+  <script type="text/javascript">
+    var testDiv = document.getElementById('test');
+    Elm.embed(Elm.Test, testDiv);
+  </script>
+
+</html>
