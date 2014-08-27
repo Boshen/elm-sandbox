@@ -1,2 +1,1 @@
-testDiv = document.getElementById('test')
-Elm.embed(Elm.Test, testDiv)
+Elm.fullscreen(Elm.Game)

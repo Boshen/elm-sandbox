@@ -127,20 +127,6 @@ module.exports = function (grunt) {
             server: '.tmp'
         },
 
-        // Make sure code styles are up to par and there are no obvious mistakes
-        jshint: {
-            options: {
-                jshintrc: '.jshintrc',
-                reporter: require('jshint-stylish')
-            },
-            all: [
-                'Gruntfile.js',
-                '<%= config.app %>/scripts/{,*/}*.js',
-                '!<%= config.app %>/scripts/vendor/*',
-                'test/spec/{,*/}*.js'
-            ]
-        },
-
         // Jasmine testing framework configuration options
         jasmine: {
             all: {
@@ -377,7 +363,7 @@ module.exports = function (grunt) {
 
         shell: {
             elm: {
-              command: 'elm --only-js Test.elm',
+              command: 'elm --only-js Game.elm',
                 options: {
                   execOptions: {
                     cwd: '<%= config.app %>/scripts/elm/'
@@ -395,6 +381,7 @@ module.exports = function (grunt) {
 
         grunt.task.run([
             'clean:server',
+            'shell:elm',
             'concurrent:server',
             'autoprefixer',
             'connect:livereload',
@@ -438,7 +425,6 @@ module.exports = function (grunt) {
     ]);
 
     grunt.registerTask('default', [
-        'newer:jshint',
         'test',
         'build'
     ]);

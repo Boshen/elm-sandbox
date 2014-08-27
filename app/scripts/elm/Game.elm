@@ -1,4 +1,4 @@
-module Test where
+module Game where
 
 import Keyboard
 import Window
