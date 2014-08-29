@@ -13,7 +13,7 @@ module.exports = function (grunt) {
     require('load-grunt-tasks')(grunt);
 
     // Time how long tasks take. Can help when optimizing build times
-    require('time-grunt')(grunt);
+    //require('time-grunt')(grunt);
 
     // Configurable paths
     var config = {
@@ -419,7 +419,6 @@ module.exports = function (grunt) {
         'cssmin',
         'uglify',
         'copy:dist',
-        'rev',
         'usemin',
         'htmlmin'
     ]);
