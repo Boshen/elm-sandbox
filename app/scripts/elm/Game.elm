@@ -3,57 +3,53 @@ module Game where
 import Keyboard
 import Window
 
--- Model
+-- model
+type Input = { x:Int, y:Int, space:Bool, delta: Time }
+type Spaceship = { x:Float, y:Float }
+type Game = { spaceship: Spaceship }
 
-type Bullet = { x:Float, y:Float, vx: Float, vy: Float, mv:Bool }
-bullet : Bullet
-bullet = { x=0, y=0, vx=0, vy=0, mv=False }
+defaultGame : Game
+defaultGame =
+  { spaceship = defaultSpaceship
+  }
 
-tank : { x:Float, y:Float, angle:Float, bullet:Bullet }
-tank = { x=0, y=0, angle=90, bullet=bullet }
+defaultSpaceship : Spaceship
+defaultSpaceship = { x=0, y=0 }
 
--- Update
+-- update
+stepGame : Input -> Game -> Game
+stepGame input game = game
 
-stepTank {x, y} tank =
-  let x' = toFloat x
-      y' = toFloat y
-      angle' = tank.angle + y'
-  in { tank | x <- tank.x + x'
-            , angle <- clamp 0 180 angle'
-      }
+-- display
+display: (Int, Int) -> Game -> Input -> Element
+display (w, h) game input =
+  collage w h
+  [ debug (w,h) game input
+  , drawSpaceship game
+  ]
 
-stepBullet t shoot tank =
-  let dx = cos (degrees (180-tank.angle))
-      dy = sin (degrees tank.angle) + t * tank.bullet.vy
-  in
-    { tank | bullet <- if tank.bullet.mv
-                       then { bullet | x <- tank.bullet.x + 3*dx
-                                     , y <- max 0 tank.bullet.y + 3*dy
-                                     , vx <- tank.bullet.vx - t/2
-                                     , vy <- tank.bullet.vy - 8*t
-                                     , mv <- True
-                            }
-                       else { bullet | x <- tank.x
-                                     , y <- tank.y
-                                     , mv <- shoot || tank.bullet.mv
-                            }
-    }
+drawSpaceship : Game -> Form
+drawSpaceship game =
+  ngon 3 10 |> filled black |> rotate (pi/2)
 
-step (t, arrows, shoot) = stepTank arrows . stepBullet t shoot
+debug : (Int, Int) -> Game -> Input -> Form
+debug (w, h) game input =
+  let x = toFloat w/4
+      y = toFloat h/4
+  in group
+  [ toForm (asText [game.spaceship.x, game.spaceship.y]) |> move (x, y)
+  , toForm (asText [input.x, input.y]) |> move (x, y+20)
+  ]
 
-display (w, h) {x, y, angle, bullet} =
-  let dx = 10*cos(degrees (180-angle))
-      dy = 10*sin(degrees (180-angle))
-  in collage w h
-    [ move (toFloat w/4, toFloat h/4) <| toForm (asText [x, y, angle, bullet.x, bullet.y])
-    , move (toFloat w/4, toFloat h/4-30) <| toForm (asText [bullet.vx, bullet.vy])
-    , move (x, y) <| filled black (rect 20 5)
-    , move (x+dx, y+dy) . rotate (degrees (90-angle)) <| filled black (rect 2 20)
-    , move (bullet.x+2*dx, bullet.y+2*dy) <| filled red (circle 2)
-    ]
-
+-- signals
 delta = inSeconds <~ fps 25
+input = sampleOn delta <| Input <~ lift .x Keyboard.arrows
+                                 ~ lift .y Keyboard.arrows
+                                 ~ Keyboard.space
+                                 ~ delta
 
-input = sampleOn delta <| lift3 (,,) delta Keyboard.arrows Keyboard.space
+-- main
+gameState : Signal Game
+gameState = foldp stepGame defaultGame input
 
-main = display <~ Window.dimensions ~ foldp step tank input
+main = display <~ Window.dimensions ~ gameState ~ input
