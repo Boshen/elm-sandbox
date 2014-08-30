@@ -53,7 +53,7 @@ module.exports = function (grunt) {
                 tasks: ['newer:copy:styles', 'autoprefixer']
             },
             elm: {
-              files: ['<%= config.app %>/scripts/elm/*.elm'],
+              files: ['<%= config.app %>/scripts/space/*.elm'],
               tasks: ['shell:elm']
             },
             livereload: {
@@ -62,7 +62,7 @@ module.exports = function (grunt) {
                 },
                 files: [
                     '<%= config.app %>/{,*/}*.html',
-                    '<%= config.app %>/scripts/elm/build/*.js',
+                    '<%= config.app %>/scripts/space/build/*.js',
                     '.tmp/styles/{,*/}*.css',
                     '.tmp/scripts/{,*/}*.js',
                     '<%= config.app %>/images/{,*/}*'
@@ -363,10 +363,10 @@ module.exports = function (grunt) {
 
         shell: {
             elm: {
-              command: 'elm -m --only-js Game.elm',
+              command: 'elm -m --only-js Space.elm',
                 options: {
                   execOptions: {
-                    cwd: '<%= config.app %>/scripts/elm/'
+                    cwd: '<%= config.app %>/scripts/space/'
                   }
                 }
             }

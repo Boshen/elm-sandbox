@@ -1,4 +1,4 @@
-module Game where
+module Space where
 
 import Debug
 import Keyboard
