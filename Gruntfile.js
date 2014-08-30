@@ -363,7 +363,7 @@ module.exports = function (grunt) {
 
         shell: {
             elm: {
-              command: 'elm --only-js Game.elm',
+              command: 'elm -m --only-js Game.elm',
                 options: {
                   execOptions: {
                     cwd: '<%= config.app %>/scripts/elm/'
