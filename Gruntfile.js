@@ -52,9 +52,13 @@ module.exports = function (grunt) {
                 files: ['<%= config.app %>/styles/{,*/}*.css'],
                 tasks: ['newer:copy:styles', 'autoprefixer']
             },
-            elm: {
+            elmSpace: {
               files: ['<%= config.app %>/scripts/space/*.elm'],
-              tasks: ['shell:elm']
+              tasks: ['shell:elmSpace']
+            },
+            elmTracer: {
+              files: ['<%= config.app %>/scripts/tracer/*.elm'],
+              tasks: ['shell:elmTracer']
             },
             livereload: {
                 options: {
@@ -62,7 +66,7 @@ module.exports = function (grunt) {
                 },
                 files: [
                     '<%= config.app %>/{,*/}*.html',
-                    '<%= config.app %>/scripts/space/build/*.js',
+                    '<%= config.app %>/scripts/**/*.js',
                     '.tmp/styles/{,*/}*.css',
                     '.tmp/scripts/{,*/}*.js',
                     '<%= config.app %>/images/{,*/}*'
@@ -362,11 +366,19 @@ module.exports = function (grunt) {
         },
 
         shell: {
-            elm: {
+            elmSpace: {
               command: 'elm -m --only-js Space.elm',
                 options: {
                   execOptions: {
                     cwd: '<%= config.app %>/scripts/space/'
+                  }
+                }
+            },
+            elmTracer: {
+              command: 'elm -m --only-js Tracer.elm',
+                options: {
+                  execOptions: {
+                    cwd: '<%= config.app %>/scripts/tracer/'
                   }
                 }
             }
@@ -381,7 +393,7 @@ module.exports = function (grunt) {
 
         grunt.task.run([
             'clean:server',
-            'shell:elm',
+            'shell',
             'concurrent:server',
             'autoprefixer',
             'connect:livereload',
@@ -411,7 +423,7 @@ module.exports = function (grunt) {
 
     grunt.registerTask('build', [
         'clean:dist',
-        'shell:elm',
+        'shell',
         'useminPrepare',
         'concurrent:dist',
         'autoprefixer',

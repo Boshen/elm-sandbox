@@ -1,10 +1,10 @@
 programs =
   space: Elm.Space
+  tracer: Elm.Tracer
 
 application = null
 
 for prog, app of programs
-  console.log window.location.search, window.location.search.indexOf(prog) > -1
   if window.location.search.indexOf(prog) > -1
     application = app
 
@@ -13,4 +13,5 @@ for link in document.querySelectorAll('.link')
     link.style.display = 'none'
 
 if application?
+  document.body.style.cursor = 'none'
   Elm.fullscreen(application)
