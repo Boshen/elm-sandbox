@@ -22,8 +22,6 @@ stepGame input ({dots, n} as game) =
          , n <- n + 1
   }
 
-movements = map (\n -> (5*cos (2*pi*n/9), 5*sin (2*pi*n/9))) [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
-
 addDots : Int -> Input -> [Dot] -> [Dot]
 addDots n {pos, click, window} dots =
   let (x, y) = pos
@@ -31,7 +29,7 @@ addDots n {pos, click, window} dots =
       x' = (toFloat x) - (toFloat w) / 2
       y' = -(toFloat y) + (toFloat h) / 2
       c = rgb (mkRed n) (mkGreen n) (mkBlue n)
-      moreDots = if click then map (\(a,b)-> defaultDot x' y' c (\(c,d)->(c+a,b+d))) movements else []
+      moreDots = if click then map (\(a,b)-> defaultDot x' y' c (\(c,d)->(c+a,b+d))) (coordinates 5 12) else []
   in defaultDot x' y' c id :: dots ++ moreDots
 
 removeDots : [Dot] -> [Dot]
@@ -64,7 +62,12 @@ delta = inSeconds <~ fps 30
 input = sampleOn delta <| Input <~ Mouse.position ~ Mouse.isDown ~ Window.dimensions
 
 -- main
+main : Signal Element
 main = display <~ Window.dimensions ~ (foldp stepGame defaultGame input)
+
+-- a list of co-ordinates to draw
+coordinates : Float -> Float -> [(Float, Float)]
+coordinates radius len = map (\m -> (radius*cos (2*pi*m/len), radius*sin (2*pi*m/len))) [0..len]
 
 -- helper from http://elm-lang.org/edit/examples/Intermediate/Tracer.elm
 osc n = if n <= 255 then n else (255 - (mod n 255))
@@ -72,3 +75,4 @@ c m t = osc (mod (t*m) 510)
 mkRed   = c 3
 mkGreen = c 5
 mkBlue  = c 7
+
