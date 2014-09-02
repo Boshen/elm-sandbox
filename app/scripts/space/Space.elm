@@ -15,9 +15,14 @@ type Input = { dx:Int
              , delta:Time
              , pulse:Time
              , window: (Int, Int) }
-type Spaceship = { x:Float, y:Float }
-type Bullet = { x:Float, y:Float, vx:Float, vy:Float }
-type Meteor = { x:Float, y:Float, vx:Float, vy:Float, radius:Float, clr:Color}
+
+type Position r = { r |  x:Float,  y:Float }
+type Velocity r = { r | vx:Float, vy:Float }
+
+type Spaceship = Position {}
+type Bullet = Position (Velocity {})
+type Meteor = Position (Velocity {radius:Float, clr:Color})
+
 type Game = { spaceship:Spaceship
             , bullets:[Bullet]
             , meteors:[Meteor]
@@ -37,11 +42,11 @@ defaultGame =
 defaultSpaceship : Spaceship
 defaultSpaceship = { x=0, y=0 }
 
-defaultBullet : Float -> Float -> Bullet
-defaultBullet x y = { x=x, y=y, vx=0, vy=0 }
+defaultBullet : Position r -> Bullet
+defaultBullet pos = { x=pos.x, y=pos.y, vx=0, vy=0 }
 
-defaultMeteor : Float -> Float -> Float -> Float -> Color -> Meteor
-defaultMeteor x y vx r c = { x=x, y=y, vx=vx, vy=0, radius=r, clr=c}
+defaultMeteor : Position r -> Velocity r -> Float -> Color -> Meteor
+defaultMeteor pos v r c = { x=pos.x, y=pos.y, vx=v.vx, vy=v.vy, radius=r, clr=c }
 
 -- update
 
@@ -72,7 +77,7 @@ updateSpaceship (dx, dy) (w, h) spaceship =
 
 addBullets : Spaceship -> Bool -> [Bullet] -> [Bullet]
 addBullets {x, y} shoot bullets =
-  if shoot then defaultBullet x y :: bullets else bullets
+  if shoot then defaultBullet {x=x, y=y} :: bullets else bullets
 
 removeBullets : (Int, Int) -> [Bullet] -> [Bullet]
 removeBullets window bullets = filter (\b -> removeBullet window b) bullets
@@ -104,7 +109,7 @@ addMeteors pulse lastPulse g (w, h) meteors =
       clr = rgb 0 0 (round (255*c))
   in case lastPulse
      of Nothing -> meteors
-        Just lp -> if pulse /= lp then defaultMeteor x y vx r clr :: meteors else meteors
+        Just lp -> if pulse /= lp then defaultMeteor {x=x, y=y} {vx=x, vy=0} r clr :: meteors else meteors
 
 removeMeteors : (Int, Int) -> [Meteor] -> [Meteor]
 removeMeteors window meteors = filter (\m -> removeMeteor window m) meteors
