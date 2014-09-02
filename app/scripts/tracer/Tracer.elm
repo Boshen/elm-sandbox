@@ -29,7 +29,7 @@ addDots n {pos, click, window} dots =
       x' = (toFloat x) - (toFloat w) / 2
       y' = -(toFloat y) + (toFloat h) / 2
       c = rgb (mkRed n) (mkGreen n) (mkBlue n)
-      moreDots = if click then map (\(a,b)-> defaultDot x' y' c (\(c,d)->(c+a,b+d))) (coordinates 5 12) else []
+      moreDots = if click then map (createClickedDot x' y' c) (coordinates 5 12) else []
   in defaultDot x' y' c id :: dots ++ moreDots
 
 removeDots : [Dot] -> [Dot]
@@ -46,6 +46,9 @@ updateDot ({x, y, radius, alfa, moveXY} as dot) =
            , x <- x'
            , y <- y'
      }
+
+createClickedDot : Float -> Float -> Color -> ((Float, Float) -> Dot)
+createClickedDot x y c = (\(dx, dy)-> defaultDot x y c (\(x', y') -> (x'+dx, y'+dy)))
 
 -- display
 display : (Int, Int) -> Game -> Element
@@ -75,4 +78,3 @@ c m t = osc (mod (t*m) 510)
 mkRed   = c 3
 mkGreen = c 5
 mkBlue  = c 7
-
