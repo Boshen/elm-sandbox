@@ -70,7 +70,9 @@ main = display <~ Window.dimensions ~ (foldp stepGame defaultGame input)
 
 -- a list of co-ordinates to draw
 coordinates : Float -> Float -> [(Float, Float)]
-coordinates radius len = map (\m -> (radius*cos (2*pi*m/len), radius*sin (2*pi*m/len))) [0..len]
+coordinates radius len =
+  let g n = fromPolar (radius, turns (n/len))
+  in map g [0..len]
 
 -- helper from http://elm-lang.org/edit/examples/Intermediate/Tracer.elm
 osc n = if n <= 255 then n else (255 - (mod n 255))
