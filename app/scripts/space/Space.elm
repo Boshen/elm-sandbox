@@ -1,6 +1,5 @@
 module Space where
 
-import Debug
 import Keyboard
 import Window
 import Random
@@ -12,6 +11,7 @@ import Generator.Standard (..)
 type Input = { dx:Int
              , dy:Int
              , shoot:Bool
+             , restart:Bool
              , delta:Time
              , pulse:Time
              , window: (Int, Int) }
@@ -27,6 +27,7 @@ type Game = { spaceship:Spaceship
             , bullets:[Bullet]
             , meteors:[Meteor]
             , lastPulse:Maybe Time
+            , isGameOver:Bool
             , gen:Generator Standard}
 
 
@@ -36,6 +37,7 @@ defaultGame =
   , bullets = []
   , meteors = []
   , lastPulse = Nothing
+  , isGameOver = False
   , gen = generator 42
   }
 
@@ -51,18 +53,22 @@ defaultMeteor pos v r c = { x=pos.x, y=pos.y, vx=v.vx, vy=v.vy, radius=r, clr=c 
 -- update
 
 stepGame : Input -> Game -> Game
-stepGame {dx, dy, shoot, delta, pulse, window}
-         ({spaceship, bullets, meteors, lastPulse, gen} as game) =
+stepGame {dx, dy, shoot, restart, delta, pulse, window}
+         ({spaceship, bullets, meteors, lastPulse, isGameOver, gen} as game) =
   let spaceship' = updateSpaceship (dx, dy) window spaceship
       bullets' = (addBullets spaceship shoot . removeBullets window . updateBullets) bullets
       meteors' = (addMeteors pulse lastPulse gen window . removeMeteors window . updateMeteors) meteors
+      isGameOver' = hasCollided spaceship' meteors'
       lastPulse' = updateLastPulse lastPulse pulse
       (_, gen') = float gen
-  in { game | spaceship <- spaceship'
-            , bullets <- bullets'
-            , meteors <- meteors'
-            , lastPulse <- lastPulse'
-            , gen <- gen'
+  in
+    if restart then defaultGame else
+    { game | spaceship  <- if isGameOver then spaceship else spaceship'
+            , bullets    <- if isGameOver then bullets else bullets'
+            , meteors    <- if isGameOver then meteors else meteors'
+            , lastPulse  <- lastPulse'
+            , gen        <- gen'
+            , isGameOver <- isGameOver'
      }
 
 updateSpaceship : (Int, Int) -> (Int, Int) -> Spaceship -> Spaceship
@@ -109,7 +115,7 @@ addMeteors pulse lastPulse g (w, h) meteors =
       clr = rgb 0 0 (round (255*c))
   in case lastPulse
      of Nothing -> meteors
-        Just lp -> if pulse /= lp then defaultMeteor {x=x, y=y} {vx=x, vy=0} r clr :: meteors else meteors
+        Just lp -> if pulse /= lp then defaultMeteor {x=x, y=y} {vx=vx', vy=0} r clr :: meteors else meteors
 
 removeMeteors : (Int, Int) -> [Meteor] -> [Meteor]
 removeMeteors window meteors = filter (\m -> removeMeteor window m) meteors
@@ -134,14 +140,27 @@ updateLastPulse lastPulse newPulse =
   of Nothing -> Just newPulse
      Just lp -> if lp /= newPulse then Just newPulse else lastPulse
 
+hasCollided : Spaceship -> [Meteor] -> Bool
+hasCollided spaceship meteors =
+  not <| isEmpty <| filter (\m -> detectCollision spaceship m) meteors
+
+detectCollision : Spaceship -> Meteor -> Bool
+detectCollision spaceship meteor =
+  let (x1, y1) = (spaceship.x, spaceship.y)
+      (x2, y2, mr) = (meteor.x, meteor.y, meteor.radius)
+  in
+    ((x1-10) <= (x2) && (x2) <= (x1+10)) &&
+    ((y1-10) <= (y2) && (y2) <= (y1+10))
+
 -- display
-display: (Int, Int) -> Game -> Input -> Element
-display (w, h) ({spaceship, bullets, meteors} as game) input =
+display : (Int, Int) -> Game -> Input -> Element
+display (w, h) ({spaceship, bullets, meteors, isGameOver} as game) input =
   collage w h
-  [ debug (w,h) game input
+  [ debug (w, h) game input
   , drawSpaceship spaceship
   , drawBullets bullets
   , drawMeteors meteors
+  , displayGameOver (w, h) isGameOver
   ]
 
 drawSpaceship : Spaceship -> Form
@@ -162,16 +181,23 @@ drawMeteor : Meteor -> Form
 drawMeteor {x, y, radius, clr} =
   circle radius |> filled clr |> move (x, y)
 
+displayGameOver : (Int, Int) -> Bool -> Form
+displayGameOver (w, h) isGameOver =
+  let msg = if isGameOver then "GAME OVER\n(Press Enter)" else ""
+  in plainText msg |> toForm |> move (0, toFloat h/4)
+
 debug : (Int, Int) -> Game -> Input -> Form
 debug (w, h) game input =
   let x = toFloat w/4
       y = toFloat h/4
   in group
-  [ toForm (asText [game.spaceship.x, game.spaceship.y]) |> move (x, y)
-  , toForm (asText [input.dx, input.dy]) |> move (x, y+20)
-  , toForm (asText [fst input.window, snd input.window]) |> move (x, y+40)
-  , toForm (asText (length game.bullets)) |> move (x, y+60)
-  , toForm (asText (length game.meteors)) |> move (x, y+80)
+  [
+  --toForm (asText [game.spaceship.x, game.spaceship.y]) |> move (x, y)
+  --toForm (asText [input.dx, input.dy]) |> move (x, y+20)
+  --, toForm (asText [fst input.window, snd input.window]) |> move (x, y+40)
+  --, toForm (asText (length game.bullets)) |> move (x, y+60)
+  --, toForm (asText (length game.meteors)) |> move (x, y+80)
+  --, toForm (asText game.isGameOver) |> move (x, y+20)
   ]
 
 -- signals
@@ -180,6 +206,7 @@ pulse = every (second / 4)
 input = sampleOn delta <| Input <~ lift .x Keyboard.arrows
                                  ~ lift .y Keyboard.arrows
                                  ~ Keyboard.space
+                                 ~ Keyboard.enter
                                  ~ delta
                                  ~ pulse
                                  ~ Window.dimensions
