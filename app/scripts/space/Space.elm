@@ -57,7 +57,7 @@ stepGame {dx, dy, shoot, restart, delta, pulse, window}
          ({spaceship, bullets, meteors, lastPulse, isGameOver, gen} as game) =
   let spaceship' = updateSpaceship (dx, dy) window spaceship
       bullets' = (addBullets spaceship shoot . removeBullets window . updateBullets) bullets
-      meteors' = (addMeteors pulse lastPulse gen window . removeMeteors window . updateMeteors) meteors
+      meteors' = (addMeteors pulse lastPulse gen window . removeMeteors window bullets . updateMeteors) meteors
       isGameOver' = hasCollided spaceship' meteors'
       lastPulse' = updateLastPulse lastPulse pulse
       (_, gen') = float gen
@@ -110,18 +110,21 @@ addMeteors pulse lastPulse g (w, h) meteors =
       (c, g4) = float g3
       y = (toFloat h) / 2 - 10
       x = (toFloat w) / 2 - (toFloat w) * x'
-      r = 3 * r' + 3
+      r = 10 * r' + 3
       vx = vx'
       clr = rgb 0 0 (round (255*c))
   in case lastPulse
      of Nothing -> meteors
         Just lp -> if pulse /= lp then defaultMeteor {x=x, y=y} {vx=vx', vy=0} r clr :: meteors else meteors
 
-removeMeteors : (Int, Int) -> [Meteor] -> [Meteor]
-removeMeteors window meteors = filter (\m -> removeMeteor window m) meteors
+removeMeteors : (Int, Int) -> [Bullet] -> [Meteor] -> [Meteor]
+removeMeteors window bullets meteors = filter (\m -> not <| removeMeteor window bullets m) meteors
 
-removeMeteor : (Int, Int) -> Meteor -> Bool
-removeMeteor (w, h) {x, y} = y > toFloat -h/2-10
+removeMeteor : (Int, Int) -> [Bullet] -> Meteor -> Bool
+removeMeteor (w, h) bullets ({x, y} as meteor) = shotMeteor bullets meteor || y <= toFloat -h/2-10
+
+shotMeteor : [Bullet] -> Meteor -> Bool
+shotMeteor bullets {x, y, radius} = or <| map (\b -> b.y >= y-radius && b.x >= (x-radius) && b.x <= (x+radius)) bullets
 
 updateMeteors : [Meteor] -> [Meteor]
 updateMeteors meteors = map updateMeteor meteors
@@ -196,13 +199,13 @@ debug (w, h) game input =
   --toForm (asText [input.dx, input.dy]) |> move (x, y+20)
   --, toForm (asText [fst input.window, snd input.window]) |> move (x, y+40)
   --, toForm (asText (length game.bullets)) |> move (x, y+60)
-  --, toForm (asText (length game.meteors)) |> move (x, y+80)
+  toForm (asText (length game.meteors)) |> move (x, y+80)
   --, toForm (asText game.isGameOver) |> move (x, y+20)
   ]
 
 -- signals
 delta = inSeconds <~ fps 60
-pulse = every (second / 4)
+pulse = every (50*millisecond)
 input = sampleOn delta <| Input <~ lift .x Keyboard.arrows
                                  ~ lift .y Keyboard.arrows
                                  ~ Keyboard.space
