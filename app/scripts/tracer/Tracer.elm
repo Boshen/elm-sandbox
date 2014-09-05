@@ -29,8 +29,8 @@ addDots n {pos, click, window} dots =
       x' = (toFloat x) - (toFloat w) / 2
       y' = -(toFloat y) + (toFloat h) / 2
       c = rgb (mkRed n) (mkGreen n) (mkBlue n)
-      moreDots = if click then map (createClickedDot x' y' c) (coordinates 5 12) else []
-  in defaultDot x' y' c id :: dots ++ moreDots
+      moreDots = if click then map (createClickedDot x' y' c) (coordinates 5 12) else [defaultDot x' y' c id]
+  in dots ++ moreDots
 
 removeDots : [Dot] -> [Dot]
 removeDots dots = filter (\d -> d.radius >= 0) dots
