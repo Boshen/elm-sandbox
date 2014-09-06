@@ -1,6 +1,7 @@
 programs =
   space: Elm.Space
   tracer: Elm.Tracer
+  life: Elm.Life
 
 application = null
 

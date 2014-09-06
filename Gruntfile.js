@@ -60,6 +60,10 @@ module.exports = function (grunt) {
               files: ['<%= config.app %>/scripts/tracer/*.elm'],
               tasks: ['shell:elmTracer']
             },
+            elmLife: {
+              files: ['<%= config.app %>/scripts/life/*.elm'],
+              tasks: ['shell:elmLife']
+            },
             livereload: {
                 options: {
                     livereload: '<%= connect.options.livereload %>'
@@ -381,8 +385,16 @@ module.exports = function (grunt) {
                     cwd: '<%= config.app %>/scripts/tracer/'
                   }
                 }
+            },
+            elmLife: {
+              command: 'elm -m --only-js Life.elm',
+                options: {
+                  execOptions: {
+                    cwd: '<%= config.app %>/scripts/life/'
+                  }
+                }
             }
-        } 
+        }
     });
 
 
