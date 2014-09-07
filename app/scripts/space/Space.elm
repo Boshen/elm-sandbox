@@ -199,7 +199,7 @@ debug (w, h) game input =
   --toForm (asText [input.dx, input.dy]) |> move (x, y+20)
   --, toForm (asText [fst input.window, snd input.window]) |> move (x, y+40)
   --, toForm (asText (length game.bullets)) |> move (x, y+60)
-  toForm (asText (length game.meteors)) |> move (x, y+80)
+  --toForm (asText (length game.meteors)) |> move (x, y+80)
   --, toForm (asText game.isGameOver) |> move (x, y+20)
   ]
 
