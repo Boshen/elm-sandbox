@@ -14,6 +14,7 @@ type GameInput = { pos:(Int, Int)
                  , window:(Int, Int)
                  , pulse:Time
                  , space:Bool
+                 , n:Int
                  }
 
 type Cell = (Int, Int)
@@ -26,6 +27,7 @@ type Game = { state: State
             , lastPulse:Time
             , lastClick:Bool
             , lastPos:(Int, Int)
+            , lastSpace:Bool
             }
 
 defaultCells : Cells
@@ -37,23 +39,26 @@ defaultGame = { state=Pause
               , lastPulse=0
               , lastClick=False
               , lastPos=(0,0)
+              , lastSpace=False
               }
 
 -- update
 stepGame : GameInput -> Game -> Game
 stepGame {pos, click, window, pulse, space}
-         ({state, cells, lastPulse, lastClick, lastPos} as game) =
+         ({state, cells, lastPulse, lastClick, lastPos, lastSpace} as game) =
   case state of
     Play ->
       { game | cells <- updateCells pulse lastPulse cells
              , lastPulse <- pulse
-             , state <- if space then Pause else Play
+             , lastSpace <- space
+             , state <- if space && space /= lastSpace || (length <| Set.toList cells) == 0 then Pause else Play
       }
     Pause ->
       { game | cells <- if (lastClick /= click || lastPos /= pos) && click then toggleCells pos window cells else cells
              , lastClick <- click
              , lastPos <- pos
-             , state <- if space then Play else Pause
+             , lastSpace <- space
+             , state <- if space && space /= lastSpace then Play else Pause
       }
 
 updateCells : Time -> Time -> Cells -> Cells
@@ -102,39 +107,44 @@ toggleCells pos window cells =
 
 -- display
 display : (Int, Int) -> Game -> GameInput -> Element
-display (w, h) {cells, state} {pos, space} =
-  collage w h [ drawGrid (w, h) cells
-              , drawCell blue (mouseToCell pos (w,h))
-              , debug (w, h) pos space cells state
+display (w, h) {cells, state} {pos, click, space, n} =
+  collage w h [ drawGrid (w, h) n cells
+              , drawCell n (mouseToCell pos (w,h))
+              , debug (w, h) pos n cells state
               ]
 
-drawGrid : (Int, Int) -> Cells -> Form
-drawGrid (w, h) cells =
-  group <| drawCells black cells
+drawGrid : (Int, Int) -> Int -> Cells -> Form
+drawGrid (w, h) n cells =
+  group <| drawCells n cells
 
-drawCells : Color -> Cells -> [Form]
-drawCells clr cells = map (drawCell clr) (Set.toList cells)
+drawCells : Int -> Cells -> [Form]
+drawCells n cells = map (drawCell n) (Set.toList cells)
 
-drawCell : Color -> Cell -> Form
-drawCell clr (i, j) = move (toFloat i*gridSize, toFloat j*gridSize)
-                      <| filled clr
-                      <| square gridSize
+drawCell : Int -> Cell -> Form
+drawCell n (i, j) = move (toFloat i*gridSize, toFloat j*gridSize)
+                      <| filled (rgb (mkRed n) (mkGreen n) (mkBlue n))
+                      <| circle (gridSize/2)
 
-debug (w, h) pos space cells state =
-  group [ move (toFloat w/4, toFloat h/4+0) <| toForm <| asText space
+debug (w, h) pos n cells state =
+  group [ --move (toFloat w/4, toFloat h/4+0) <| toForm <| asText [mkRed n, mkGreen n, mkBlue n]
         --, move (toFloat w/4, toFloat h/4+20) <| toForm <| asText cells
-        , move (toFloat w/4, toFloat h/4+20) <| toForm <| asText pos
-        , move (toFloat w/4, toFloat h/4+40) <| toForm <| asText state
+        --, move (toFloat w/4, toFloat h/4+20) <| toForm <| asText <| mouseToCell pos (w, h)
+        move (toFloat w/2-40, toFloat h/2-20) <| toForm <| plainText <|
+        case state of
+          Play -> "Playing"
+          Pause -> "Paused"
         ]
 
 -- signals
 delta = inSeconds <~ fps 60
-deltaCells = every <| millisecond
+deltaCells = every (100*millisecond)
+everySecond = foldp (\a b -> b + 1) 0 deltaCells
 input = sampleOn delta <| GameInput <~ Mouse.position
                                      ~ dropRepeats Mouse.isDown
                                      ~ Window.dimensions
                                      ~ deltaCells
                                      ~ Keyboard.space
+                                     ~ everySecond
 
 -- main
 gameState : Signal Game
@@ -146,3 +156,9 @@ main = display <~ Window.dimensions ~ gameState ~ input
 -- helpers
 mouseToCell : (Int, Int) -> (Int, Int) -> Cell
 mouseToCell (x, y) (w, h) = (div (x-(div w 2)) gridSize, div (-y+(div h 2)) gridSize)
+
+osc n = if n <= 255 then n else (255 - (mod n 255))
+c m t = osc (mod (t*m) 510)
+mkRed   = c 3
+mkGreen = c 5
+mkBlue  = c 7
