@@ -20,7 +20,7 @@ type GameInput = { pos:(Int, Int)
 type Cell = (Int, Int)
 type Cells = Set.Set Cell
 
-gridSize = 10
+gridSize = 4
 
 type Game = { state: State
             , cells: Cells
@@ -122,14 +122,14 @@ drawCells n cells = map (drawCell n) (Set.toList cells)
 
 drawCell : Int -> Cell -> Form
 drawCell n (i, j) = move (toFloat i*gridSize, toFloat j*gridSize)
-                      <| filled (rgb (mkRed n) (mkGreen n) (mkBlue n))
-                      <| circle (gridSize/2)
+                      <| filled black
+                      <| square gridSize
 
 debug (w, h) pos n cells state =
   group [ --move (toFloat w/4, toFloat h/4+0) <| toForm <| asText [mkRed n, mkGreen n, mkBlue n]
-        --, move (toFloat w/4, toFloat h/4+20) <| toForm <| asText cells
+        move (toFloat w/4-40, toFloat h/2-40) <| toForm <| asText <| length <| Set.toList cells
         --, move (toFloat w/4, toFloat h/4+20) <| toForm <| asText <| mouseToCell pos (w, h)
-        move (toFloat w/2-40, toFloat h/2-20) <| toForm <| plainText <|
+        , move (toFloat w/4-40, toFloat h/2-20) <| toForm <| plainText <|
         case state of
           Play -> "Playing"
           Pause -> "Paused"
@@ -156,9 +156,3 @@ main = display <~ Window.dimensions ~ gameState ~ input
 -- helpers
 mouseToCell : (Int, Int) -> (Int, Int) -> Cell
 mouseToCell (x, y) (w, h) = (div (x-(div w 2)) gridSize, div (-y+(div h 2)) gridSize)
-
-osc n = if n <= 255 then n else (255 - (mod n 255))
-c m t = osc (mod (t*m) 510)
-mkRed   = c 3
-mkGreen = c 5
-mkBlue  = c 7
