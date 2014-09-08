@@ -12,7 +12,6 @@ data State = Play | Pause
 type GameInput = { pos:(Int, Int)
                  , click:Bool
                  , window:(Int, Int)
-                 , pulse:Time
                  , space:Bool
                  }
 
@@ -23,10 +22,10 @@ gridSize = 4
 
 type Game = { state: State
             , cells: Cells
-            , lastPulse:Time
             , lastClick:Bool
             , lastPos:(Int, Int)
             , lastSpace:Bool
+            , n:Int
             }
 
 defaultCells : Cells
@@ -35,22 +34,22 @@ defaultCells = Set.fromList []
 defaultGame : Game
 defaultGame = { state=Pause
               , cells=defaultCells
-              , lastPulse=0
               , lastClick=False
               , lastPos=(0,0)
               , lastSpace=False
+              , n=0
               }
 
 -- update
 stepGame : GameInput -> Game -> Game
-stepGame {pos, click, window, pulse, space}
-         ({state, cells, lastPulse, lastClick, lastPos, lastSpace} as game) =
+stepGame {pos, click, window, space}
+         ({state, cells, lastClick, lastPos, lastSpace, n} as game) =
   case state of
     Play ->
-      { game | cells <- updateCells pulse lastPulse cells
-             , lastPulse <- pulse
+      { game | cells <- updateCells cells
              , lastSpace <- space
              , state <- if space && space /= lastSpace || (length <| Set.toList cells) == 0 then Pause else Play
+             , n <- n + 1
       }
     Pause ->
       { game | cells <- if (lastClick /= click || lastPos /= pos) && click then toggleCells pos window cells else cells
@@ -58,24 +57,17 @@ stepGame {pos, click, window, pulse, space}
              , lastPos <- pos
              , lastSpace <- space
              , state <- if space && space /= lastSpace then Play else Pause
+             , n <- 0
       }
 
-updateCells : Time -> Time -> Cells -> Cells
-updateCells pulse lastPulse cells =
-  if pulse == lastPulse then cells else
-   let allCells = grid cells
-       deadCells = Set.diff allCells cells
-   in Set.union (Set.filter (shouldLive cells) cells)
-                 (Set.filter (shouldRevive cells) deadCells)
+updateCells : Cells -> Cells
+updateCells cells = Set.filter (shouldLive cells) (grid cells)
 
 shouldLive : Cells -> Cell -> Bool
 shouldLive cells cell =
-  let neighbours = countNeighbours cell cells
-  in neighbours == 2 || neighbours == 3
-
-shouldRevive : Cells -> Cell -> Bool
-shouldRevive cells cell =
-  countNeighbours cell cells == 3
+  let n = countNeighbours cell cells
+      isAlive = Set.member cell cells
+  in (isAlive && (n == 2 || n == 3)) || (not isAlive && n == 3)
 
 countNeighbours : Cell -> Cells -> Int
 countNeighbours cell cells = foldl (\c n-> if Set.member c cells then n+1 else n) 0 (around cell)
@@ -100,10 +92,10 @@ toggleCells pos window cells =
 
 -- display
 display : (Int, Int) -> Game -> GameInput -> Element
-display (w, h) {cells, state} {pos, click, space} =
+display (w, h) {cells, state, n} {pos, click, space} =
   collage w h [ drawGrid (w, h) cells
               , drawCell (mouseToCell pos (w,h))
-              , debug (w, h) pos cells state
+              , debug (w, h) pos cells state n
               ]
 
 drawGrid : (Int, Int) -> Cells -> Form
@@ -118,23 +110,21 @@ drawCell (i, j) = move (toFloat i*gridSize, toFloat j*gridSize)
                       <| filled black
                       <| square gridSize
 
-debug (w, h) pos cells state =
-  group [ --move (toFloat w/4, toFloat h/4+0) <| toForm <| asText [mkRed n, mkGreen n, mkBlue n]
-        move (toFloat w/4-40, toFloat h/2-40) <| toForm <| asText <| length <| Set.toList cells
-        --, move (toFloat w/4, toFloat h/4+20) <| toForm <| asText <| mouseToCell pos (w, h)
-        , move (toFloat w/4-40, toFloat h/2-20) <| toForm <| plainText <|
+debug (w, h) pos cells state n =
+  group [
+          move (toFloat w/4-40, toFloat h/2-60) <| toForm <| asText n
+        , move (toFloat w/4-40, toFloat h/2-40) <| toForm <| asText <| length <| Set.toList cells
+        ,  move (toFloat w/4-40, toFloat h/2-20) <| toForm <| plainText <|
         case state of
           Play -> "Playing"
           Pause -> "Paused"
         ]
 
 -- signals
-delta = inSeconds <~ fps 60
-deltaCells = every <| 50*millisecond
+delta = inSeconds <~ fps 30
 input = sampleOn delta <| GameInput <~ Mouse.position
                                      ~ dropRepeats Mouse.isDown
                                      ~ Window.dimensions
-                                     ~ deltaCells
                                      ~ Keyboard.space
 
 -- main
