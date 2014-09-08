@@ -14,7 +14,6 @@ type GameInput = { pos:(Int, Int)
                  , window:(Int, Int)
                  , pulse:Time
                  , space:Bool
-                 , n:Int
                  }
 
 type Cell = (Int, Int)
@@ -66,9 +65,8 @@ updateCells pulse lastPulse cells =
   if pulse == lastPulse then cells else
    let allCells = grid cells
        deadCells = Set.diff allCells cells
-       aliveCells = cells
-   in Set.union (Set.filter (shouldLive aliveCells) aliveCells)
-                 (Set.filter (shouldRevive aliveCells) deadCells)
+   in Set.union (Set.filter (shouldLive cells) cells)
+                 (Set.filter (shouldRevive cells) deadCells)
 
 shouldLive : Cells -> Cell -> Bool
 shouldLive cells cell =
@@ -80,23 +78,18 @@ shouldRevive cells cell =
   countNeighbours cell cells == 3
 
 countNeighbours : Cell -> Cells -> Int
-countNeighbours cell cells = Set.foldl (isNeighbour cell) 0 cells
-
-isNeighbour : Cell -> Cell -> Int -> Int
-isNeighbour (x1, y1) (x2, y2) i =
-  let dx = abs (x1 - x2)
-      dy = abs (y1 - y2)
-  in i + if dx <= 1 && dy <= 1 && (dx + dy) /= 0 then 1 else 0
+countNeighbours cell cells = foldl (\c n-> if Set.member c cells then n+1 else n) 0 (around cell)
 
 grid : Cells -> Cells
 grid cells = (concatMap around (Set.toList cells)) |> Set.fromList
 
 around : Cell -> [Cell]
-around (x, y) =
-  let offset = [-1..1]
-      block1D x = map ((,) x) offset
-      block2D = concatMap block1D offset
-  in map (\(i, j) -> (x+i, y+j)) block2D
+around (x, y) = map (\(i, j) -> (x+i, y+j)) neighbours
+
+neighbours : [(Int, Int)]
+neighbours = [ (-1, 1), (0, 1), (1, 1)
+             , (-1, 0),         (1, 0)
+             , (-1,-1), (0,-1), (1,-1) ]
 
 toggleCells : (Int, Int) -> (Int, Int) -> Cells -> Cells
 toggleCells pos window cells =
@@ -107,25 +100,25 @@ toggleCells pos window cells =
 
 -- display
 display : (Int, Int) -> Game -> GameInput -> Element
-display (w, h) {cells, state} {pos, click, space, n} =
-  collage w h [ drawGrid (w, h) n cells
-              , drawCell n (mouseToCell pos (w,h))
-              , debug (w, h) pos n cells state
+display (w, h) {cells, state} {pos, click, space} =
+  collage w h [ drawGrid (w, h) cells
+              , drawCell (mouseToCell pos (w,h))
+              , debug (w, h) pos cells state
               ]
 
-drawGrid : (Int, Int) -> Int -> Cells -> Form
-drawGrid (w, h) n cells =
-  group <| drawCells n cells
+drawGrid : (Int, Int) -> Cells -> Form
+drawGrid (w, h) cells =
+  group <| drawCells cells
 
-drawCells : Int -> Cells -> [Form]
-drawCells n cells = map (drawCell n) (Set.toList cells)
+drawCells : Cells -> [Form]
+drawCells cells = map drawCell (Set.toList cells)
 
-drawCell : Int -> Cell -> Form
-drawCell n (i, j) = move (toFloat i*gridSize, toFloat j*gridSize)
+drawCell : Cell -> Form
+drawCell (i, j) = move (toFloat i*gridSize, toFloat j*gridSize)
                       <| filled black
                       <| square gridSize
 
-debug (w, h) pos n cells state =
+debug (w, h) pos cells state =
   group [ --move (toFloat w/4, toFloat h/4+0) <| toForm <| asText [mkRed n, mkGreen n, mkBlue n]
         move (toFloat w/4-40, toFloat h/2-40) <| toForm <| asText <| length <| Set.toList cells
         --, move (toFloat w/4, toFloat h/4+20) <| toForm <| asText <| mouseToCell pos (w, h)
@@ -137,14 +130,12 @@ debug (w, h) pos n cells state =
 
 -- signals
 delta = inSeconds <~ fps 60
-deltaCells = every (100*millisecond)
-everySecond = foldp (\a b -> b + 1) 0 deltaCells
+deltaCells = every <| 50*millisecond
 input = sampleOn delta <| GameInput <~ Mouse.position
                                      ~ dropRepeats Mouse.isDown
                                      ~ Window.dimensions
                                      ~ deltaCells
                                      ~ Keyboard.space
-                                     ~ everySecond
 
 -- main
 gameState : Signal Game
