@@ -4,7 +4,6 @@ import Window
 import Set
 import Mouse
 import Keyboard
-import Graphics.Input as Input
 
 -- model
 data State = Play | Pause
@@ -26,30 +25,30 @@ type Game = { state: State
             , lastPos:(Int, Int)
             , lastSpace:Bool
             , n:Int
+            , path:Cells
             }
-
-defaultCells : Cells
-defaultCells = Set.fromList []
 
 defaultGame : Game
 defaultGame = { state=Pause
-              , cells=defaultCells
+              , cells=Set.empty
               , lastClick=False
               , lastPos=(0,0)
               , lastSpace=False
               , n=0
+              , path=Set.empty
               }
 
 -- update
 stepGame : GameInput -> Game -> Game
 stepGame {pos, click, window, space}
-         ({state, cells, lastClick, lastPos, lastSpace, n} as game) =
+         ({state, cells, lastClick, lastPos, lastSpace, n, path} as game) =
   case state of
     Play ->
       { game | cells <- updateCells cells
              , lastSpace <- space
              , state <- if space && space /= lastSpace || (length <| Set.toList cells) == 0 then Pause else Play
              , n <- n + 1
+             , path <- Set.union cells path
       }
     Pause ->
       { game | cells <- if (lastClick /= click || lastPos /= pos) && click then toggleCells pos window cells else cells
@@ -92,22 +91,24 @@ toggleCells pos window cells =
 
 -- display
 display : (Int, Int) -> Game -> GameInput -> Element
-display (w, h) {cells, state, n} {pos, click, space} =
-  collage w h [ drawGrid (w, h) cells
-              , drawCell (mouseToCell pos (w,h))
+display (w, h) {cells, state, n, path} {pos, click, space} =
+  collage w h [
+                drawGrid (w, h) green path
+              , drawGrid (w, h) black cells
+              , drawCell red (mouseToCell pos (w,h))
               , debug (w, h) pos cells state n
               ]
 
-drawGrid : (Int, Int) -> Cells -> Form
-drawGrid (w, h) cells =
-  group <| drawCells cells
+drawGrid : (Int, Int) -> Color -> Cells -> Form
+drawGrid (w, h) clr cells =
+  group <| drawCells clr cells
 
-drawCells : Cells -> [Form]
-drawCells cells = map drawCell (Set.toList cells)
+drawCells : Color -> Cells -> [Form]
+drawCells clr cells = map (drawCell clr) (Set.toList cells)
 
-drawCell : Cell -> Form
-drawCell (i, j) = move (toFloat i*gridSize, toFloat j*gridSize)
-                      <| filled black
+drawCell : Color -> Cell -> Form
+drawCell clr (i, j) = move (toFloat i*gridSize, toFloat j*gridSize)
+                      <| filled clr
                       <| square gridSize
 
 debug (w, h) pos cells state n =
