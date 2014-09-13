@@ -1,5 +1,5 @@
 programs =
-  space: Elm.Space
+  dodger: Elm.Dodger
   tracer: Elm.Tracer
   life: Elm.Life
 

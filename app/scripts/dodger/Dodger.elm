@@ -1,4 +1,4 @@
-module Space where
+module Dodger where
 
 import Keyboard
 import Window
@@ -8,7 +8,7 @@ import Generator (..)
 import Generator.Standard (..)
 
 port title : String
-port title = "Elm - Space game"
+port title = "Elm - Dodger"
 
 -- model
 type Input = { dx:Int
@@ -162,8 +162,7 @@ detectCollision spaceship meteor =
 display : (Int, Int) -> Game -> Input -> Element
 display (w, h) ({spaceship, bullets, meteors, isGameOver} as game) input =
   collage w h
-  [ debug (w, h) game input
-  , drawSpaceship spaceship
+  [ drawSpaceship spaceship
   , drawBullets bullets
   , drawMeteors meteors
   , displayGameOver (w, h) isGameOver
@@ -192,23 +191,9 @@ displayGameOver (w, h) isGameOver =
   let msg = if isGameOver then "GAME OVER\n(Press Enter)" else ""
   in plainText msg |> toForm |> move (0, toFloat h/4)
 
-debug : (Int, Int) -> Game -> Input -> Form
-debug (w, h) game input =
-  let x = toFloat w/4
-      y = toFloat h/4
-  in group
-  [
-  --toForm (asText [game.spaceship.x, game.spaceship.y]) |> move (x, y)
-  --toForm (asText [input.dx, input.dy]) |> move (x, y+20)
-  --, toForm (asText [fst input.window, snd input.window]) |> move (x, y+40)
-  --, toForm (asText (length game.bullets)) |> move (x, y+60)
-  --toForm (asText (length game.meteors)) |> move (x, y+80)
-  --, toForm (asText game.isGameOver) |> move (x, y+20)
-  ]
-
 -- signals
 delta = inSeconds <~ fps 60
-pulse = every (50*millisecond)
+pulse = every (millisecond)
 input = sampleOn delta <| Input <~ lift .x Keyboard.arrows
                                  ~ lift .y Keyboard.arrows
                                  ~ Keyboard.space

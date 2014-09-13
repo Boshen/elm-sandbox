@@ -52,9 +52,9 @@ module.exports = function (grunt) {
                 files: ['<%= config.app %>/styles/{,*/}*.css'],
                 tasks: ['newer:copy:styles', 'autoprefixer']
             },
-            elmSpace: {
-              files: ['<%= config.app %>/scripts/space/*.elm'],
-              tasks: ['shell:elmSpace']
+            elmDodger: {
+              files: ['<%= config.app %>/scripts/dodger/*.elm'],
+              tasks: ['shell:elmDodger']
             },
             elmTracer: {
               files: ['<%= config.app %>/scripts/tracer/*.elm'],
@@ -280,7 +280,7 @@ module.exports = function (grunt) {
             dist: {
                 options: {
                     collapseBooleanAttributes: true,
-                    collapseWhitespace: true,
+                    collapseWhitedodger: true,
                     removeAttributeQuotes: true,
                     removeCommentsFromCDATA: true,
                     removeEmptyAttributes: true,
@@ -370,11 +370,11 @@ module.exports = function (grunt) {
         },
 
         shell: {
-            elmSpace: {
-              command: 'elm -m --only-js Space.elm',
+            elmDodger: {
+              command: 'elm -m --only-js Dodger.elm',
                 options: {
                   execOptions: {
-                    cwd: '<%= config.app %>/scripts/space/'
+                    cwd: '<%= config.app %>/scripts/dodger/'
                   }
                 }
             },
