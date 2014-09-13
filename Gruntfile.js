@@ -64,6 +64,10 @@ module.exports = function (grunt) {
               files: ['<%= config.app %>/scripts/life/*.elm'],
               tasks: ['shell:elmLife']
             },
+            elmSnake: {
+              files: ['<%= config.app %>/scripts/snake/*.elm'],
+              tasks: ['shell:elmSnake']
+            },
             livereload: {
                 options: {
                     livereload: '<%= connect.options.livereload %>'
@@ -391,6 +395,14 @@ module.exports = function (grunt) {
                 options: {
                   execOptions: {
                     cwd: '<%= config.app %>/scripts/life/'
+                  }
+                }
+            },
+            elmSnake: {
+              command: 'elm -m --only-js Snake.elm',
+                options: {
+                  execOptions: {
+                    cwd: '<%= config.app %>/scripts/snake/'
                   }
                 }
             }

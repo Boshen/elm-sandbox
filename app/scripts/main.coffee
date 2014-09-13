@@ -2,6 +2,7 @@ programs =
   dodger: Elm.Dodger
   tracer: Elm.Tracer
   life: Elm.Life
+  snake: Elm.Snake
 
 application = null
 
