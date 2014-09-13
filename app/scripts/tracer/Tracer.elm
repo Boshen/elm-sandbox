@@ -4,6 +4,9 @@ import Color
 import Mouse
 import Window
 
+port title : String
+port title = "Elm - Mouse Tracer"
+
 -- model
 type Input = { pos:(Int, Int), click:Bool, window:(Int, Int) }
 type Dot = { x:Float, y:Float, radius:Float, clr:Color, alfa:Float, moveXY: (Float, Float)->(Float, Float) }

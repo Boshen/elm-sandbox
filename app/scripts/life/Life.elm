@@ -5,6 +5,9 @@ import Set
 import Mouse
 import Keyboard
 
+port title : String
+port title = "Elm - Game of Life"
+
 -- model
 data State = Play | Pause
 

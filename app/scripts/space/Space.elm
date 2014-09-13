@@ -7,6 +7,9 @@ import Color
 import Generator (..)
 import Generator.Standard (..)
 
+port title : String
+port title = "Elm - Space game"
+
 -- model
 type Input = { dx:Int
              , dy:Int
