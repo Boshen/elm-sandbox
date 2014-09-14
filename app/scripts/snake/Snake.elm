@@ -7,36 +7,43 @@ import Window
 port title : String
 port title = "Elm - Snake"
 
+-- model
+data State = Play | Over
 type Position r = { r | x:Int, y:Int }
 type Velocity r = { r | vx:Int, vy:Int }
 type Snake = Position (Velocity {body:[Position {}]})
 type Food = Position {}
-type Game = { snake:Snake, food:Food }
-
+type Game = { snake:Snake, food:Food, state:State }
 type Input = { dx:Int
              , dy:Int
              , window:(Int, Int)
+             , restart:Bool
              , rand:(Float, Float)}
 
 gridSize = 10
 
 defaultGame : Game
-defaultGame = { snake=defaultSnake, food={x=10, y=10}}
+defaultGame = { snake=defaultSnake, food={x=10, y=10}, state=Play}
 
 defaultSnake : Snake
-defaultSnake = { x=0, y=0, vx=0, vy=0, body=defaultBody }
+defaultSnake = { x=1, y=0, vx=1, vy=0, body=(repeat 10 {x=0,y=0})}
 
-defaultBody = map (\x -> {x=x,y=0}) [0..10]
-
+-- updates
 stepGame : Input -> Game -> Game
-stepGame {dx, dy, window, rand} ({snake, food} as game) =
-  let eaten = snake.x == food.x && snake.y == food.y
-      snake' = (stepSnake (dx, dy) window) . (eatFood eaten food) <| snake
-      food' = updateFood eaten window rand food
-  in
-    { game | snake <- snake'
-           , food <- food'
-    }
+stepGame {dx, dy, window, restart, rand} ({snake, food, state} as game) =
+  case state of
+    Play ->
+      let eaten = snake.x == food.x && snake.y == food.y
+          snake' = (stepSnake (dx, dy) window) . (eatFood eaten food) <| snake
+          food' = updateFood eaten window rand food
+          state' = updateState window snake'
+      in
+        { game | snake <- snake'
+               , food <- food'
+               , state <- state'
+        }
+    Over ->
+      if restart then defaultGame else game
 
 stepSnake : (Int, Int) -> (Int, Int) -> Snake -> Snake
 stepSnake (dx, dy) (w, h) ({x, y, vx, vy, body} as snake) =
@@ -54,8 +61,7 @@ eatFood : Bool -> Food -> Snake -> Snake
 eatFood eaten food snake =
   if eaten then
      {snake | body <- food :: snake.body}
-  else
-     snake
+  else snake
 
 updateFood : Bool -> (Int, Int) -> (Float, Float) -> Food -> Food
 updateFood eaten (w, h) (rx, ry) food =
@@ -63,16 +69,20 @@ updateFood eaten (w, h) (rx, ry) food =
      {food | x <- round <| (rx-0.5)*(toFloat w)
            , y <- round <| (ry-0.5)*(toFloat h)
      }
-  else
-    food
+  else food
 
+updateState : (Int, Int) -> Snake -> State
+updateState (w, h) {x, y, body} =
+  if | abs x == div w 2 || abs y == div h 2 -> Over
+     | any (\c-> x == c.x && y == c.y) body -> Over
+     | otherwise -> Play
 
+-- display
 display : (Int, Int) -> Game -> Element
-display (w, h) {snake, food} =
-  collage w h [ draw black snake
-              , group <| map (draw gray) snake.body
+display (w, h) {snake, food, state} =
+  collage w h [ draw charcoal snake
               , draw red food
-              , debug (w, h) snake
+              , group <| map (draw darkGray) snake.body
               ]
 
 draw : Color -> Position r -> Form
@@ -80,22 +90,21 @@ draw clr {x, y} = move (toFloat x*gridSize, toFloat y*gridSize)
                       <| filled clr
                       <| square gridSize
 
-debug (w, h) {x, y, vx, vy, body} =
-  group [ move (toFloat w/4, toFloat h/4-20) <| toForm <| asText <| length body
-        , move (toFloat w/4, toFloat h/4) <| toForm <| asText (x, y, vx, vy)
-        ]
-
+-- signals
 dt : Signal Time
 dt = fps 30
 
+randWH : Signal (Float, Float)
 randWH = lift2 (,) (Random.float dt) (Random.float dt)
 
 input : Signal Input
 input = sampleOn dt <| Input <~ lift .x Keyboard.arrows
                               ~ lift .y Keyboard.arrows
                               ~ lift (\(w, h) -> ((div w gridSize), (div h gridSize))) Window.dimensions
+                              ~ Keyboard.space
                               ~ randWH
 
+-- main
 gameState : Signal Game
 gameState = foldp stepGame defaultGame input
 
