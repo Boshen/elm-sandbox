@@ -3,6 +3,7 @@ programs =
   tracer: Elm.Tracer
   life: Elm.Life
   snake: Elm.Snake
+  man_down: Elm.ManDown
 
 application = null
 
