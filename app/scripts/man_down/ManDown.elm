@@ -14,11 +14,11 @@ type Position r = { r |  x:Int,  y:Int }
 type Velocity r = { r | vx:Int, vy:Int }
 type Man = Velocity (Position {})
 type Block = Position (Velocity { width:Int })
-type Game = { man:Man, blocks:[Block], lastPulse:Time, state:State }
-type Input = { dx:Int, restart:Bool, winHeight:Int, pulse:Time, rand:Float}
+type Game = { man:Man, blocks:[Block], lastPulse:Time, lastBlock:Maybe Block, state:State, count:Int }
+type Input = { dx:Int, restart:Bool, window:(Int, Int), pulse:Time, randWidth:Float, randX:Float }
 
 defaultGame : Game
-defaultGame = { man=defaultMan, blocks=[], lastPulse=0, state=Play }
+defaultGame = { man=defaultMan, blocks=[], lastPulse=0, lastBlock=Nothing, state=Play, count=0 }
 
 defaultMan : Man
 defaultMan = { x=0, y=100, vx=0, vy=0 }
@@ -32,26 +32,28 @@ stepGame ({restart} as input) ({state} as game) =
 
 updatePlayState : Input -> Game -> Game
 updatePlayState
-  {dx, restart, winHeight, pulse, rand}
-  ({man, blocks, lastPulse, state} as game) =
+  {dx, restart, window, pulse, randWidth, randX }
+  ({man, blocks, lastPulse, lastBlock, state, count} as game) =
   let collidedBlock = getCollidedBlock man blocks
   in { game | man <- ((updateManX dx . updateManY collidedBlock)) man
-            , blocks <- ((addBlock rand (lastPulse /= pulse) winHeight) . updateBlocks) blocks
+            , blocks <- ((addBlock randWidth randX (lastPulse /= pulse) window) . updateBlocks) blocks
             , lastPulse <- pulse
-            , state <- isGameOver man winHeight
+            , state <- isGameOver man (snd window)
+            , count <- updateCount lastBlock collidedBlock count
+            , lastBlock <- collidedBlock
      }
 
 getCollidedBlock : Man -> [Block] -> Maybe Block
 getCollidedBlock {x, y} blocks =
-  let collidedBlock = filter (\b -> (y - b.y == 0 || y - b.y ==1) && x >= b.x - (div b.width 2) && x <= b.x + (div b.width 2)) blocks
+  let collidedBlock = filter (\b -> y > b.y && y - b.y <= 6 && abs (x - b.x) <= (div b.width 2)) blocks
   in if isEmpty collidedBlock then Nothing else Just (head collidedBlock)
 
 updateManX : Int -> Man -> Man
 updateManX dx ({x, y, vx, vy} as man) =
   { man |  x <- x + vx
         ,  y <- y + vy
-        , vy <- -1
-        , vx <- dx*8
+        , vy <- -3
+        , vx <- dx*16
   }
 
 updateManY : Maybe Block -> Man -> Man
@@ -60,38 +62,39 @@ updateManY block man =
     Nothing -> man
     Just b -> { man | vy <- b.vy }
 
-addBlock : Float -> Bool -> Int -> [Block] -> [Block]
-addBlock rand newPulse winHeight blocks =
-  let randWidth = round (20 + 100*rand)
-  in if newPulse then { x=0, y=-200, vx=0, vy=0, width=randWidth } :: blocks else blocks
+addBlock : Float -> Float -> Bool -> (Int, Int) -> [Block] -> [Block]
+addBlock randWidth randX newPulse window blocks =
+  let (winWidth, winHeight) = window
+      width = round (50 + 200*randWidth)
+      x = round ((randX-0.5) * (toFloat winWidth))
+  in if newPulse then { x=x, y=-(div winHeight 2), vx=0, vy=0, width=width } :: blocks else blocks
 
 updateBlocks : [Block] -> [Block]
 updateBlocks blocks =
   let updateBlock block =
     { block |  y <- block.y + block.vy
-            , vy <- 1
+            , vy <- 3
     }
   in map updateBlock blocks
 
+updateCount : Maybe Block -> Maybe Block -> Int -> Int
+updateCount lastBlock collidedBlock n =
+  case (lastBlock, collidedBlock) of
+    (Nothing, Just b) -> n + 1
+    _ -> n
+
 isGameOver : Position r -> Int -> State
 isGameOver {y} winHeight =
-  if y < (div -winHeight 2) || y > (div winHeight 2) then Over else Play
+  if y < (div -winHeight 2) || y+60 > (div winHeight 2) then Over else Play
 
 -- display
 display : (Int, Int) -> Game -> Element
-display (w, h) {man, blocks, state} =
+display (w, h) {man, blocks, state, count} =
   collage w h [ drawMan man
               , drawBlocks blocks
               , drawGameOver (w, h) state
-              --, debug (w, h) man blocks
+              , displayCount (w, h) count
               ]
-
-debug (w, h) man blocks =
-  let w' = toFloat w/4
-      h' = toFloat h/4
-  in group [ move (w', h'+20) <| toForm <| asText man.y
-           , move (w', h'+40) <| toForm <| asText <| map .y blocks
-           ]
 
 drawMan : Position r -> Form
 drawMan {x, y} =
@@ -111,27 +114,37 @@ drawBlocks blocks =
   in group <| map drawBlock blocks
 
 drawGameOver : (Int, Int) -> State -> Form
-drawGameOver (w, h) s = move (toFloat w/4, toFloat h/4) <| toForm <|
+drawGameOver (w, h) s = move (0, toFloat h/4) <| toForm <|
   case s of
     Play -> Element.empty
     Over -> plainText "Game Over"
+
+displayCount : (Int, Int) -> Int -> Form
+displayCount (w, h) count =
+  let w' = toFloat w/2-20
+      h' = toFloat h/2-20
+  in move (w', h') <| toForm <| asText count
 
 -- signals
 dt : Signal Time
 dt = fps 60
 
 pulse : Signal Time
-pulse = every (4*second)
+pulse = every (1*second)
 
-rand : Signal Float
-rand = Random.float pulse
+randWidth : Signal Float
+randWidth = Random.float pulse
+
+randX : Signal Float
+randX = Random.float pulse
 
 input : Signal Input
 input = sampleOn dt <| Input <~ lift .x Keyboard.arrows
                               ~ Keyboard.space
-                              ~ lift snd Window.dimensions
+                              ~ Window.dimensions
                               ~ pulse
-                              ~ rand
+                              ~ randWidth
+                              ~ randX
 
 -- main
 gameState : Signal Game
