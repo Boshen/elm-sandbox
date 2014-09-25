@@ -59,8 +59,8 @@ stepGame : Input -> Game -> Game
 stepGame {dx, dy, shoot, restart, delta, pulse, window}
          ({spaceship, bullets, meteors, lastPulse, isGameOver, gen} as game) =
   let spaceship' = updateSpaceship (dx, dy) window spaceship
-      bullets' = (addBullets spaceship shoot . removeBullets window . updateBullets) bullets
-      meteors' = (addMeteors pulse lastPulse gen window . removeMeteors window bullets . updateMeteors) meteors
+      bullets' = (addBullets spaceship shoot >> removeBullets window >> updateBullets) bullets
+      meteors' = (addMeteors pulse lastPulse gen window >> removeMeteors window bullets >> updateMeteors) meteors
       isGameOver' = hasCollided spaceship' meteors'
       lastPulse' = updateLastPulse lastPulse pulse
       (_, gen') = float gen
@@ -127,7 +127,7 @@ removeMeteor : (Int, Int) -> [Bullet] -> Meteor -> Bool
 removeMeteor (w, h) bullets ({x, y} as meteor) = shotMeteor bullets meteor || y <= toFloat -h/2-10
 
 shotMeteor : [Bullet] -> Meteor -> Bool
-shotMeteor bullets {x, y, radius} = or <| map (\b -> b.y >= y-radius && b.x >= (x-radius) && b.x <= (x+radius)) bullets
+shotMeteor bullets {x, y, radius} = any  (\b -> b.y >= y-radius && b.x >= (x-radius) && b.x <= (x+radius)) bullets
 
 updateMeteors : [Meteor] -> [Meteor]
 updateMeteors meteors = map updateMeteor meteors

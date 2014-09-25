@@ -34,7 +34,7 @@ stepGame {dx, dy, window, restart, rand} ({snake, food, state} as game) =
   case state of
     Play ->
       let eaten = snake.x == food.x && snake.y == food.y
-          snake' = (stepSnake (dx, dy) window) . (eatFood eaten food) <| snake
+          snake' = (stepSnake (dx, dy) window) >> (eatFood eaten food) <| snake
           food' = updateFood eaten window rand food
           state' = updateState window snake
       in
@@ -50,8 +50,8 @@ stepSnake (dx, dy) (w, h) ({x, y, vx, vy, body} as snake) =
   let (vx', vy') = if | dx /= 0 && vx == 0 -> (dx,  0)
                       | dy /= 0 && vy == 0 -> ( 0, dy)
                       | otherwise          -> (vx, vy)
-  in { snake | x <- clamp (div -w 2) (div w 2) (x + vx)
-             , y <- clamp (div -h 2) (div h 2) (y + vy)
+  in { snake | x <- clamp (-w // 2) (w // 2) (x + vx)
+             , y <- clamp (-h // 2) (h // 2) (y + vy)
              , vx <- vx'
              , vy <- vy'
              , body <- {x=x, y=y} :: take ((length body)-1) body
@@ -71,7 +71,7 @@ updateFood eaten (w, h) (rx, ry) food =
 
 updateState : (Int, Int) -> Snake -> State
 updateState (w, h) {x, y, body} =
-  if | abs x == div w 2 || abs y == div h 2 -> Over
+  if | abs x == (w // 2) || abs y == (h // 2) -> Over
      | any ((==) {x=x, y=y}) body -> Over
      | otherwise -> Play
 
@@ -98,7 +98,7 @@ randWH = lift2 (,) (Random.float dt) (Random.float dt)
 input : Signal Input
 input = sampleOn dt <| Input <~ lift .x Keyboard.arrows
                               ~ lift .y Keyboard.arrows
-                              ~ lift (\(w, h) -> ((div w gridSize), (div h gridSize))) Window.dimensions
+                              ~ lift (\(w, h) -> ((w // gridSize), (h //gridSize))) Window.dimensions
                               ~ Keyboard.space
                               ~ randWH
 

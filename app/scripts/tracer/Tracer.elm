@@ -21,7 +21,7 @@ defaultDot x y c mv = { x=x, y=y, radius=5, clr=c, alfa=1, moveXY=mv }
 -- update
 stepGame : Input -> Game -> Game
 stepGame input ({dots, n} as game) =
-  { game | dots <- (addDots n input . removeDots . updateDots) dots
+  { game | dots <- (addDots n input >> removeDots >> updateDots) dots
          , n <- n + 1
   }
 
@@ -32,7 +32,7 @@ addDots n {pos, click, window} dots =
       x' = (toFloat x) - (toFloat w) / 2
       y' = -(toFloat y) + (toFloat h) / 2
       c = rgb (mkRed n) (mkGreen n) (mkBlue n)
-      moreDots = if click then map (createClickedDot x' y' c) (coordinates 5 12) else [defaultDot x' y' c id]
+      moreDots = if click then map (createClickedDot x' y' c) (coordinates 5 12) else [defaultDot x' y' c identity]
   in dots ++ moreDots
 
 removeDots : [Dot] -> [Dot]
@@ -58,7 +58,7 @@ display : (Int, Int) -> Game -> Element
 display (w, h) {dots} = collage w h [ drawDots dots ]
 
 drawDots : [Dot] -> Form
-drawDots = group . map drawDot
+drawDots = group << map drawDot
 
 drawDot : Dot -> Form
 drawDot {x, y, radius, alfa, clr} = move (x, y) <| alpha alfa <| filled clr <| circle radius
@@ -78,8 +78,8 @@ coordinates radius len =
   in map g [0..len]
 
 -- helper from http://elm-lang.org/edit/examples/Intermediate/Tracer.elm
-osc n = if n <= 255 then n else (255 - (mod n 255))
-c m t = osc (mod (t*m) 510)
+osc n = if n <= 255 then n else (255 - (n % 255))
+c m t = osc ((t*m) % 510)
 mkRed   = c 3
 mkGreen = c 5
 mkBlue  = c 7

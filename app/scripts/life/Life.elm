@@ -140,4 +140,4 @@ main = display <~ Window.dimensions ~ gameState ~ input
 
 -- helpers
 mouseToCell : (Int, Int) -> (Int, Int) -> Cell
-mouseToCell (x, y) (w, h) = (div (x-(div w 2)) gridSize, div (-y+(div h 2)) gridSize)
+mouseToCell (x, y) (w, h) = ((x-(w // 2)) // gridSize, (-y+(h // 2)) // gridSize)

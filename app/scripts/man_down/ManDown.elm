@@ -35,8 +35,8 @@ updatePlayState
   {dx, restart, window, pulse, randWidth, randX }
   ({man, blocks, lastPulse, lastBlock, state, count} as game) =
   let collidedBlock = getCollidedBlock man blocks
-  in { game | man <- ((updateManX dx . updateManY collidedBlock)) man
-            , blocks <- ((addBlock randWidth randX (lastPulse /= pulse) window) . updateBlocks) blocks
+  in { game | man <- ((updateManX dx >> updateManY collidedBlock)) man
+            , blocks <- ((addBlock randWidth randX (lastPulse /= pulse) window) >> updateBlocks) blocks
             , lastPulse <- pulse
             , state <- isGameOver man (snd window)
             , count <- updateCount lastBlock collidedBlock count
@@ -45,7 +45,7 @@ updatePlayState
 
 getCollidedBlock : Man -> [Block] -> Maybe Block
 getCollidedBlock {x, y} blocks =
-  let collidedBlock = filter (\b -> y > b.y && y - b.y <= 6 && abs (x - b.x) <= (div b.width 2)) blocks
+  let collidedBlock = filter (\b -> y > b.y && y - b.y <= 12 && abs (x - b.x) <= (b.width // 2)) blocks
   in if isEmpty collidedBlock then Nothing else Just (head collidedBlock)
 
 updateManX : Int -> Man -> Man
@@ -67,7 +67,7 @@ addBlock randWidth randX newPulse window blocks =
   let (winWidth, winHeight) = window
       width = round (50 + 200*randWidth)
       x = round ((randX-0.5) * (toFloat winWidth))
-  in if newPulse then { x=x, y=-(div winHeight 2), vx=0, vy=0, width=width } :: blocks else blocks
+  in if newPulse then { x=x, y=-(winHeight // 2), vx=0, vy=0, width=width } :: blocks else blocks
 
 updateBlocks : [Block] -> [Block]
 updateBlocks blocks =
@@ -85,7 +85,7 @@ updateCount lastBlock collidedBlock n =
 
 isGameOver : Position r -> Int -> State
 isGameOver {y} winHeight =
-  if y < (div -winHeight 2) || y+60 > (div winHeight 2) then Over else Play
+  if y < (-winHeight // 2) || y+60 > (winHeight // 2) then Over else Play
 
 -- display
 display : (Int, Int) -> Game -> Element
