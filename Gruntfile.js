@@ -72,6 +72,10 @@ module.exports = function (grunt) {
               files: ['<%= config.app %>/scripts/man_down/*.elm'],
               tasks: ['shell:elmManDown']
             },
+            elmFractal: {
+              files: ['<%= config.app %>/scripts/fractal/*.elm'],
+              tasks: ['shell:elmFractal']
+            },
             livereload: {
                 options: {
                     livereload: '<%= connect.options.livereload %>'
@@ -415,6 +419,14 @@ module.exports = function (grunt) {
                 options: {
                   execOptions: {
                     cwd: '<%= config.app %>/scripts/man_down/'
+                  }
+                }
+            },
+            elmFractal: {
+              command: 'elm -m --only-js Fractal.elm',
+                options: {
+                  execOptions: {
+                    cwd: '<%= config.app %>/scripts/fractal/'
                   }
                 }
             }

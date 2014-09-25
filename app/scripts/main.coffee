@@ -4,6 +4,7 @@ programs =
   life: Elm.Life
   snake: Elm.Snake
   man_down: Elm.ManDown
+  fractal: Elm.Fractal
 
 application = null
 
