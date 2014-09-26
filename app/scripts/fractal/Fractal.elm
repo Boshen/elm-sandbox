@@ -1,55 +1,56 @@
 module Fractal where
 
-import Keyboard
 import Window
 import String
 
 port title : String
-port title = "Elm"
+port title = "Lindenmayer Systems"
 
-axiom = "F+F+F+F"
+len = 5
 
--- model
-data State = Play | Over
-type Game = { state:State, s:String }
-type Input = { arrows:{x:Int, y:Int} }
+-- More curve
+angle2 = 90
+axiom2 = "LFL+F+LFL"
+rule2 c =
+  if | c == 'L' -> "-RF+LFL+FR-"
+     | c == 'R' -> "+LF-RFR-FL+"
+     | otherwise -> show c
 
-defaultGame : Game
-defaultGame = { state=Play, s=axiom }
 
--- updates
-stepGame : Input -> Game -> Game
-stepGame {arrows} ({state, s} as game) =
-  { game | s <- replace ('a', "ab") s
-  }
+-- hilbert curve
+angle3 = 90
+axiom3 = "A"
+rule3 c =
+  if | c == 'A' -> "-BF+AFA+FB-"
+     | c == 'B' -> "+AF-BFB-FA+"
+     | otherwise -> show c
 
-replace (matcher, replacer) base =
-  String.fromList <| concatMap match1 (String.toList base)
+-- dragon curve
+angle4 = 90
+axiom4 = "FX"
+rule4 c =
+  if | c == 'X' -> "X+YF+"
+     | c == 'Y' -> "-FX-Y"
+     | otherwise -> show c
 
-match c =
-  if | c == 'a' -> String.toList "ab"
-     | c == 'b' -> String.toList "a"
-     | otherwise -> [c]
+(turn, axiom, replace) = (degrees angle2, axiom2, rule2)
 
-match1 c =
-  if | c == 'F' -> String.toList "F+F-F-FF+F+F-F"
-     --| c == 'b' -> String.toList "a"
-     | otherwise -> [c]
+step _ s = String.foldl (String.append << replace) "" s
 
--- display
-display : (Int, Int) -> Game -> Element
-display (w, h) {state, s} = asText s
+display (w, h) s =
+  let (w', h') = (toFloat w, toFloat h)
+  in collage w h [move (-w'/2, 0) <| draw s]
 
--- signals
-dt : Signal Time
-dt = every second
+draw = String.foldl trace [((0, 0), 0)] >> map fst >> traced (solid black)
 
-input : Signal Input
-input = sampleOn dt <| Input <~ Keyboard.arrows
+trace c pos =
+  let ((x, y), a) = head pos
+  in
+    if | c == 'F' -> ((x + len * cos a, y + len * sin a), a) :: pos
+       | c == '+' -> ((x, y), a + turn) :: tail pos
+       | c == '-' -> ((x, y), a - turn) :: tail pos
+       | otherwise -> pos
 
--- main
-gameState : Signal Game
-gameState = foldp stepGame defaultGame input
+dt = keepIf ((>) 6) 0 <| count <| every <| 2*second
 
-main : Signal Element
-main = display <~ Window.dimensions ~ gameState
+main = display <~ Window.dimensions ~ (foldp step axiom dt)
