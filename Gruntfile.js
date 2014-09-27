@@ -72,6 +72,10 @@ module.exports = function (grunt) {
               files: ['<%= config.app %>/scripts/man_down/*.elm'],
               tasks: ['shell:elmManDown']
             },
+            elmLsystem: {
+              files: ['<%= config.app %>/scripts/lsystem/*.elm'],
+              tasks: ['shell:elmLsystem']
+            },
             elmFractal: {
               files: ['<%= config.app %>/scripts/fractal/*.elm'],
               tasks: ['shell:elmFractal']
@@ -94,7 +98,7 @@ module.exports = function (grunt) {
         connect: {
             options: {
                 port: 9000,
-                open: true,
+                open: false,
                 livereload: 35729,
                 // Change this to '0.0.0.0' to access the server from outside
                 hostname: 'localhost'
@@ -419,6 +423,14 @@ module.exports = function (grunt) {
                 options: {
                   execOptions: {
                     cwd: '<%= config.app %>/scripts/man_down/'
+                  }
+                }
+            },
+            elmLsystem: {
+              command: 'elm -m --only-js Lsystem.elm',
+                options: {
+                  execOptions: {
+                    cwd: '<%= config.app %>/scripts/lsystem/'
                   }
                 }
             },
