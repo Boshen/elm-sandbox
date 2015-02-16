@@ -1,35 +1,44 @@
 module Life where
 
-import Window
-import Set
-import Mouse
+import Color (..)
+import Graphics.Collage (..)
+import Graphics.Element (..)
 import Keyboard
+import List
+import Mouse
+import Set
+import Signal (..)
+import Text (..)
+import Time (..)
+import Window
 
 port title : String
 port title = "Elm - Game of Life"
 
 -- model
-data State = Play | Pause
+type State = Play | Pause
 
-type GameInput = { pos:(Int, Int)
-                 , click:Bool
-                 , window:(Int, Int)
-                 , space:Bool
-                 }
+type alias GameInput =
+  { pos:(Int, Int)
+  , click:Bool
+  , window:(Int, Int)
+  , space:Bool
+  }
 
-type Cell = (Int, Int)
-type Cells = Set.Set Cell
+type alias Cell = (Int, Int)
+type alias Cells = Set.Set Cell
 
 gridSize = 4
 
-type Game = { state: State
-            , cells: Cells
-            , lastClick:Bool
-            , lastPos:(Int, Int)
-            , lastSpace:Bool
-            , n:Int
-            , path:Cells
-            }
+type alias Game =
+  { state: State
+  , cells: Cells
+  , lastClick:Bool
+  , lastPos:(Int, Int)
+  , lastSpace:Bool
+  , n:Int
+  , path:Cells
+  }
 
 defaultGame : Game
 defaultGame = { state=Pause
@@ -49,7 +58,7 @@ stepGame {pos, click, window, space}
     Play ->
       { game | cells <- updateCells cells
              , lastSpace <- space
-             , state <- if space && space /= lastSpace || (length <| Set.toList cells) == 0 then Pause else Play
+             , state <- if space && space /= lastSpace || (List.length <| Set.toList cells) == 0 then Pause else Play
              , n <- n + 1
              , path <- Set.union cells path
       }
@@ -72,15 +81,15 @@ shouldLive cells cell =
   in (isAlive && (n == 2 || n == 3)) || (not isAlive && n == 3)
 
 countNeighbours : Cell -> Cells -> Int
-countNeighbours cell cells = foldl (\c n-> if Set.member c cells then n+1 else n) 0 (around cell)
+countNeighbours cell cells = List.foldl (\c n-> if Set.member c cells then n+1 else n) 0 (around cell)
 
 grid : Cells -> Cells
-grid cells = (concatMap around (Set.toList cells)) |> Set.fromList
+grid cells = (List.concatMap around (Set.toList cells)) |> Set.fromList
 
-around : Cell -> [Cell]
-around (x, y) = map (\(i, j) -> (x+i, y+j)) neighbours
+around : Cell -> List Cell
+around (x, y) = List.map (\(i, j) -> (x+i, y+j)) neighbours
 
-neighbours : [(Int, Int)]
+neighbours : List (Int, Int)
 neighbours = [ (-1, 1), (0, 1), (1, 1)
              , (-1, 0),         (1, 0)
              , (-1,-1), (0,-1), (1,-1) ]
@@ -106,8 +115,8 @@ drawGrid : (Int, Int) -> Color -> Cells -> Form
 drawGrid (w, h) clr cells =
   group <| drawCells clr cells
 
-drawCells : Color -> Cells -> [Form]
-drawCells clr cells = map (drawCell clr) (Set.toList cells)
+drawCells : Color -> Cells -> List Form
+drawCells clr cells = List.map (drawCell clr) (Set.toList cells)
 
 drawCell : Color -> Cell -> Form
 drawCell clr (i, j) = move (toFloat i*gridSize, toFloat j*gridSize)
@@ -115,9 +124,8 @@ drawCell clr (i, j) = move (toFloat i*gridSize, toFloat j*gridSize)
                       <| square gridSize
 
 debug (w, h) pos cells state n =
-  group [
-          move (toFloat w/4-40, toFloat h/2-60) <| toForm <| asText n
-        , move (toFloat w/4-40, toFloat h/2-40) <| toForm <| asText <| length <| Set.toList cells
+  group [ move (toFloat w/4-40, toFloat h/2-60) <| toForm <| asText n
+        , move (toFloat w/4-40, toFloat h/2-40) <| toForm <| asText <| List.length <| Set.toList cells
         ,  move (toFloat w/4-40, toFloat h/2-20) <| toForm <| plainText <|
         case state of
           Play -> "Playing"

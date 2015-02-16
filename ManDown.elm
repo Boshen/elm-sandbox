@@ -1,27 +1,35 @@
 module ManDown where
 
+import Color (..)
+import Graphics.Collage (..)
+import Graphics.Element (..)
 import Keyboard
-import Window
+import List
 import Random
-import Graphics.Element as Element
+import Signal (..)
+import Text
+import Time (..)
+import Window
 
 port title : String
-port title = "Elm - 是男人就下100层"
+port title = "Elm - Man Down"
 
 -- model
-data State = Play | Over
-type Position r = { r |  x:Int,  y:Int }
-type Velocity r = { r | vx:Int, vy:Int }
-type Man = Velocity (Position {})
-type Block = Position (Velocity { width:Int })
-type Game = { man:Man, blocks:[Block], lastPulse:Time, lastBlock:Maybe Block, state:State, count:Int }
-type Input = { dx:Int, restart:Bool, window:(Int, Int), pulse:Time, randWidth:Float, randX:Float }
+type State = Play | Over
+type alias Position r = { r |  x:Int,  y:Int }
+type alias Velocity r = { r | vx:Int, vy:Int }
+type alias Man = Velocity (Position {})
+type alias Block = Position (Velocity { width:Int })
+type alias Game = { man:Man, blocks:List Block, lastPulse:Time, lastBlock:Maybe Block, state:State, count:Int, seed: Random.Seed }
+type alias Input = { dx:Int, restart:Bool, window:(Int, Int), pulse:Time }
 
 defaultGame : Game
-defaultGame = { man=defaultMan, blocks=[], lastPulse=0, lastBlock=Nothing, state=Play, count=0 }
+defaultGame = { man=defaultMan, blocks=[], lastPulse=0, lastBlock=Nothing, state=Play, count=0, seed=Random.initialSeed 42}
 
 defaultMan : Man
 defaultMan = { x=0, y=100, vx=0, vy=0 }
+
+genFloat = Random.generate (Random.float 0 1)
 
 -- updates
 stepGame : Input -> Game -> Game
@@ -32,21 +40,22 @@ stepGame ({restart} as input) ({state} as game) =
 
 updatePlayState : Input -> Game -> Game
 updatePlayState
-  {dx, restart, window, pulse, randWidth, randX }
-  ({man, blocks, lastPulse, lastBlock, state, count} as game) =
+  {dx, restart, window, pulse}
+  ({man, blocks, lastPulse, lastBlock, state, count, seed} as game) =
   let collidedBlock = getCollidedBlock man blocks
   in { game | man <- ((updateManX dx >> updateManY collidedBlock)) man
-            , blocks <- ((addBlock randWidth randX (lastPulse /= pulse) window) >> updateBlocks) blocks
+            , blocks <- ((addBlock seed (lastPulse /= pulse) window) >> updateBlocks) blocks
             , lastPulse <- pulse
             , state <- isGameOver man (snd window)
             , count <- updateCount lastBlock collidedBlock count
             , lastBlock <- collidedBlock
+            , seed <- snd <| genFloat seed
      }
 
-getCollidedBlock : Man -> [Block] -> Maybe Block
+getCollidedBlock : Man -> List Block -> Maybe Block
 getCollidedBlock {x, y} blocks =
-  let collidedBlock = filter (\b -> y > b.y && y - b.y <= 12 && abs (x - b.x) <= (b.width // 2)) blocks
-  in if isEmpty collidedBlock then Nothing else Just (head collidedBlock)
+  let collidedBlock = List.filter (\b -> y > b.y && y - b.y <= 12 && abs (x - b.x) <= (b.width // 2)) blocks
+  in if List.isEmpty collidedBlock then Nothing else Just (List.head collidedBlock)
 
 updateManX : Int -> Man -> Man
 updateManX dx ({x, y, vx, vy} as man) =
@@ -62,20 +71,22 @@ updateManY block man =
     Nothing -> man
     Just b -> { man | vy <- b.vy }
 
-addBlock : Float -> Float -> Bool -> (Int, Int) -> [Block] -> [Block]
-addBlock randWidth randX newPulse window blocks =
+addBlock : Random.Seed -> Bool -> (Int, Int) -> List Block -> List Block
+addBlock seed newPulse window blocks =
   let (winWidth, winHeight) = window
+      (randWidth, seed') = genFloat seed
+      (randX, _) = genFloat seed'
       width = round (50 + 200*randWidth)
       x = round ((randX-0.5) * (toFloat winWidth))
   in if newPulse then { x=x, y=-(winHeight // 2), vx=0, vy=0, width=width } :: blocks else blocks
 
-updateBlocks : [Block] -> [Block]
+updateBlocks : List Block -> List Block
 updateBlocks blocks =
   let updateBlock block =
     { block |  y <- block.y + block.vy
             , vy <- 3
     }
-  in map updateBlock blocks
+  in List.map updateBlock blocks
 
 updateCount : Maybe Block -> Maybe Block -> Int -> Int
 updateCount lastBlock collidedBlock n =
@@ -108,22 +119,22 @@ drawMan {x, y} =
       rLeg = moveX -10 <| rotate (degrees 150) <| filled black <| rect 6 30
   in move (x', y') <| group [head, body, lArm, rArm, lLeg, rLeg]
 
-drawBlocks : [Block] -> Form
+drawBlocks : List Block -> Form
 drawBlocks blocks =
   let drawBlock block = move (toFloat block.x, toFloat block.y) <| filled blue <| rect (toFloat block.width) 10
-  in group <| map drawBlock blocks
+  in group <| List.map drawBlock blocks
 
 drawGameOver : (Int, Int) -> State -> Form
 drawGameOver (w, h) s = move (0, toFloat h/4) <| toForm <|
   case s of
-    Play -> Element.empty
-    Over -> plainText "Game Over"
+    Play -> empty
+    Over -> Text.plainText "Game Over"
 
 displayCount : (Int, Int) -> Int -> Form
 displayCount (w, h) count =
   let w' = toFloat w/2-20
       h' = toFloat h/2-20
-  in move (w', h') <| toForm <| asText count
+  in move (w', h') <| toForm <| Text.asText count
 
 -- signals
 dt : Signal Time
@@ -132,19 +143,11 @@ dt = fps 60
 pulse : Signal Time
 pulse = every (1*second)
 
-randWidth : Signal Float
-randWidth = Random.float pulse
-
-randX : Signal Float
-randX = Random.float pulse
-
 input : Signal Input
-input = sampleOn dt <| Input <~ lift .x Keyboard.arrows
+input = sampleOn dt <| Input <~ map .x Keyboard.arrows
                               ~ Keyboard.space
                               ~ Window.dimensions
                               ~ pulse
-                              ~ randWidth
-                              ~ randX
 
 -- main
 gameState : Signal Game

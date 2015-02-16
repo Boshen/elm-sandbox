@@ -1,5 +1,11 @@
 module Fractal where
 
+import Color (..)
+import List (..)
+import Graphics.Collage (..)
+import Time (..)
+import Signal (..)
+
 iters = 20
 (wx, wy) = (200, 200)
 (dx, dy) = (4/toFloat wx, 4/toFloat wy)

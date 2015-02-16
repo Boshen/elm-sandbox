@@ -1,46 +1,56 @@
 module Snake where
 
+import Color (..)
 import Keyboard
 import Random
 import Window
+import List
+import Graphics.Collage (..)
+import Graphics.Element (..)
+import Time (..)
+import Signal (..)
 
 port title : String
 port title = "Elm - Snake"
 
 -- model
-data State = Play | Over
-type Position r = { r | x:Int, y:Int }
-type Velocity r = { r | vx:Int, vy:Int }
-type Snake = Position (Velocity {body:[Position {}]})
-type Food = Position {}
-type Game = { snake:Snake, food:Food, state:State }
-type Input = { dx:Int
-             , dy:Int
-             , window:(Int, Int)
-             , restart:Bool
-             , rand:(Float, Float)}
+type State = Play | Over
+type alias Position r = { r | x:Int, y:Int }
+type alias Velocity r = { r | vx:Int, vy:Int }
+type alias Snake = Position (Velocity {body: List (Position {})})
+type alias Food = Position {}
+type alias Game = { snake:Snake, food:Food, state:State, seed:Random.Seed }
+type alias Input =
+  { dx:Int
+  , dy:Int
+  , window:(Int, Int)
+  , restart:Bool
+  }
 
 gridSize = 10
 
 defaultGame : Game
-defaultGame = { snake=defaultSnake, food={x=10, y=10}, state=Play }
+defaultGame = { snake=defaultSnake, food={x=10, y=10}, state=Play, seed=Random.initialSeed 42 }
 
 defaultSnake : Snake
-defaultSnake = { x=1, y=0, vx=1, vy=0, body=(repeat 10 {x=0,y=0}) }
+defaultSnake = { x=1, y=0, vx=1, vy=0, body=(List.repeat 10 {x=0,y=0}) }
+
+genPair = Random.generate <| Random.pair (Random.float 0 1) (Random.float 0 1)
 
 -- updates
 stepGame : Input -> Game -> Game
-stepGame {dx, dy, window, restart, rand} ({snake, food, state} as game) =
+stepGame {dx, dy, window, restart} ({snake, food, state, seed} as game) =
   case state of
     Play ->
       let eaten = snake.x == food.x && snake.y == food.y
           snake' = (stepSnake (dx, dy) window) >> (eatFood eaten food) <| snake
-          food' = updateFood eaten window rand food
+          food' = updateFood eaten window seed food
           state' = updateState window snake
       in
         { game | snake <- snake'
                , food <- food'
                , state <- state'
+               , seed <- snd <| genPair seed
         }
     Over ->
       if restart then defaultGame else game
@@ -54,15 +64,16 @@ stepSnake (dx, dy) (w, h) ({x, y, vx, vy, body} as snake) =
              , y <- clamp (-h // 2) (h // 2) (y + vy)
              , vx <- vx'
              , vy <- vy'
-             , body <- {x=x, y=y} :: take ((length body)-1) body
+             , body <- {x=x, y=y} :: List.take ((List.length body)-1) body
      }
 
 eatFood : Bool -> Food -> Snake -> Snake
 eatFood eaten food snake =
   if eaten then {snake | body <- food :: snake.body} else snake
 
-updateFood : Bool -> (Int, Int) -> (Float, Float) -> Food -> Food
-updateFood eaten (w, h) (rx, ry) food =
+updateFood : Bool -> (Int, Int) -> Random.Seed -> Food -> Food
+updateFood eaten (w, h) seed food =
+  let ((rx, ry), _) = genPair seed in
   if eaten then
      { food | x <- round <| (rx-0.5)*(toFloat w)
             , y <- round <| (ry-0.5)*(toFloat h)
@@ -72,7 +83,7 @@ updateFood eaten (w, h) (rx, ry) food =
 updateState : (Int, Int) -> Snake -> State
 updateState (w, h) {x, y, body} =
   if | abs x == (w // 2) || abs y == (h // 2) -> Over
-     | any ((==) {x=x, y=y}) body -> Over
+     | List.any ((==) {x=x, y=y}) body -> Over
      | otherwise -> Play
 
 -- display
@@ -80,7 +91,7 @@ display : (Int, Int) -> Game -> Element
 display (w, h) {snake, food} =
   collage w h [ draw black snake
               , draw red food
-              , group <| map (draw black) snake.body
+              , group <| List.map (draw black) snake.body
               ]
 
 draw : Color -> Position r -> Form
@@ -92,15 +103,11 @@ draw clr {x, y} = move (toFloat x*gridSize, toFloat y*gridSize)
 dt : Signal Time
 dt = fps 30
 
-randWH : Signal (Float, Float)
-randWH = lift2 (,) (Random.float dt) (Random.float dt)
-
 input : Signal Input
-input = sampleOn dt <| Input <~ lift .x Keyboard.arrows
-                              ~ lift .y Keyboard.arrows
-                              ~ lift (\(w, h) -> ((w // gridSize), (h //gridSize))) Window.dimensions
+input = sampleOn dt <| Input <~ map .x Keyboard.arrows
+                              ~ map .y Keyboard.arrows
+                              ~ map (\(w, h) -> ((w // gridSize), (h //gridSize))) Window.dimensions
                               ~ Keyboard.space
-                              ~ randWH
 
 -- main
 gameState : Signal Game
